@@ -1,0 +1,67 @@
+---
+title: "텍스트마이닝 기말프로젝트"
+author: "데이터테크전공 20173204 곽명빈"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(KoNLP)
+library(dplyr)
+library(wordcloud)
+library(stringr)
+library(wordcloud2)
+```
+
+## bbb
+```{r}
+txt <- readLines("즐거운맛 돈까스.txt") 
+```
+
+```{r}
+
+nouns <- sapply(txt, extractNoun, USE.NAMES = F)
+
+nouns_unlist <- unlist(nouns)
+
+##데이터 전처리 
+data_unlist <- Filter(function(x){nchar(x)>=2}, nouns_unlist)
+nouns_unlist<- gsub('[~!@#$^%&*()_+=?<>]','',data_unlist)
+nouns_unlist <- gsub("\\[","",nouns_unlist)
+nouns_unlist <- gsub('[ㄱ-ㅎ]','',nouns_unlist)
+nouns_unlist<- gsub('(ㅜ|ㅠ)','',nouns_unlist)
+nouns_unlist <- gsub("\\d+","",nouns_unlist)
+nouns_unlist <- gsub("돈까스","",nouns_unlist)
+nouns_unlist <- gsub("돈가스","",nouns_unlist)
+head(nouns_unlist, 30) ##30개 추출
+
+
+wordcount <- table(nouns_unlist)
+
+wordcount_top <-head(sort(wordcount, decreasing = T),100)
+
+wordcount_top      # 많이나온 단어
+```
+
+```{r}
+pal <- brewer.pal(8, "Dark2") ##단어의 색
+
+wordcloud(names(wordcount_top),     
+          wordcount_top,
+          scale=c(5,0.5),
+          random.order = FALSE,
+          random.color = TRUE,
+          colors = pal,
+          family = "")
+
+tq <- wordcloud2(table(wordcount_top))
+wordcloud2(table(nouns_unlist))
+
+```
+
+
+
