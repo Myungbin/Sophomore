@@ -1,0 +1,179 @@
+---
+title: "GaltonFamiles"
+author: "TEAM B"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(HistData)
+library(ggplot2)
+```
+
+GaltonFamiles 데이터를 이용한 부모키와 아이키의 상관관계 분석
+
+```{r}
+data("GaltonFamilies")
+
+glf <- GaltonFamilies
+
+str(glf)
+
+View(glf)
+```
+
+
+```{r}
+##데이터 추출 
+female <- glf[glf$gender== "female",]   ## 여성인 아이
+male <- glf[glf$gender== "male",]     ## 남성인 아이
+str(female)
+str(male)
+
+
+a1 <- subset(glf,select = "midparentHeight") # 부모의 키 (아빠의키와 1.08*엄마의키의 평균)
+str(a1)
+
+a2 <- subset(glf, select = "childHeight")    # 아이의 키
+str(a2)
+
+abc <- cbind(a1,a2) # abc에 부모와 아이의키 데이터 변환
+```
+
+## ggplot : histogram
+```{r}
+## 히스토그램을 통해 분포를 확인
+
+ggplot(a1, aes(x=midparentHeight)) +
+  geom_histogram(binwidth = 0.5,
+                 fill = "skyblue",
+                 colour = "black")
+
+  
+ggplot(a2, aes(x=childHeight)) +
+  geom_histogram(binwidth = 1,
+                 fill = "#FA5882",
+                 colour = "black")
+```
+
+
+## ggplot : Scatter Plot
+```{r}
+##여성인 아이
+ggplot(data = female,
+       aes(x=midparentHeight, y=childHeight, color = gender)) + 
+  geom_point(size = 2, color = "skyblue") + 
+  stat_smooth(method = 'lm') +
+  ggtitle("Scatter plot :midparentHeight and childHeight") +
+  theme(plot.title = element_text(size = 15))
+  
+  
+  
+## 남성인 아이
+ggplot(data = male,
+       aes(x=midparentHeight, y=childHeight, color = gender)) +
+  geom_point(size = 2, color = "blue") + 
+  stat_smooth(method = 'lm') +
+  ggtitle("Scatter plot :midparentHeight and childHeight") +
+  theme(plot.title = element_text(size = 15))
+
+
+## 두개다
+ggplot(data = glf,
+       aes(x=midparentHeight, y=childHeight, color = gender)) + 
+  geom_point(size = 2, color = "#F5A9D0") + 
+  stat_smooth(method = 'lm') +
+  ggtitle("Scatter plot :midparentHeight and childHeight") +
+  theme(plot.title = element_text(size = 15))
+
+
+```
+
+```{r}
+# 등분산검정
+var.test(glf$childHeight ~ glf$gender) 
+# H0 : 두 집단의 평균키의 차이가 없다
+# H1 : 두 집단의 평균키의 차이가 있다.
+## p-value = 0.02034이므로 귀무가설을 기각하고 대립가설을 채택
+# 두 집단간의 평균키의 차이가 있다.
+t.test(glf$childHeight ~ glf$gender)
+# 두집단의 차이가 통계적으로 유의하다.
+
+
+```
+
+
+# cov, cor. test 를 이용한 상관관계 분석
+```{r} 
+
+## 공분산의 결과가 변수가 상승할때 상승하면 양수를 나타냄 
+
+cov(female$midparentHeight, female$childHeight)  # 공분산 여자
+
+cov(male$midparentHeight, male$childHeight)      # 공분산 남자
+
+cov(glf$childHeight, glf$midparentHeight)        # 둘다
+
+## 둘다 양수로 x가 증가할때 y도 증가한다는 사실을 확인할 수 있다. 
+cor.test(female$midparentHeight, female$childHeight)
+
+cor.test(male$midparentHeight, male$childHeight)
+
+cor.test(glf$childHeight, glf$midparentHeight)
+
+## 결과를 보면 상관계수는 0.5132725, 0.4827528, 0.32 이고 p-value <  2.2e-16으로 되어있다. 이것은 2.2e-16 이하이이므로 양적선형관계를 가진다.
+```
+
+
+
+
+## 회귀분석 (부모님 키에 따른 아이의키)
+```{r}
+str(abc)
+names(abc) <- c("ph", "ch")
+names(abc)
+## 둘다
+va = lm(ch ~ ph, data = abc)
+summary(va) 
+# F통계량이 107이며 P-값이 2.2e-16으로 유의수준 5%하에서 추정된 회귀모형이 통계적으로 유의함
+# 평균 3.392만큼의 오차있음
+# 결정계수가 낮아 데이터를 설명하긴 힘들지만 회귀분석 결과 회귀식과 회귀계수들이 통계적으로 유의함
+
+
+plot(ch ~ ph, data = abc,
+     xlab = "부모님의 키",
+     ylab = "아이의 키",
+     main = "두 변수의 산점도") +
+  abline(va, col = "red")   # y = 0.63x + 22.64
+
+## 여자 
+va1 <- lm(female$childHeight ~ female$midparentHeight, data = female)
+summary(va1)
+# F통계량이 161이며 P-값이 2.2e-16으로 유의수준 5%하에서 추정된 회귀모형이 통계적으로 유의함
+# 평균 2만큼의 오차있음
+# 결정계수가 낮아 데이터를 설명하긴 힘들지만 회귀분석 결과 회귀식과 회귀계수들이 통계적으로 유의함
+
+plot(female$childHeight ~ female$midparentHeight, data = female,
+     xlab = "부모님의 키",
+     ylab = "여자아이의 키",
+     main = "두 변수의 산점도") +
+  abline(va1, col = "red")
+
+## 남자
+va2 <- lm(male$childHeight ~ male$midparentHeight, data = male)
+summary(va2)
+# F통계량이 146이며 P-값이 2.2e-16으로 유의수준 5%하에서 추정된 회귀모형이 통계적으로 유의함
+# 평균 2,3만큼의 오차있음
+# 결정계수가 낮아 데이터를 설명하긴 힘들지만 회귀분석 결과 회귀식과 회귀계수들이 통계적으로 유의함
+
+plot(male$childHeight ~ male$midparentHeight, data = male,
+     xlab = "부모님의 키",
+     ylab = "남자아이의 키",
+     main = "두 변수의 산점도") +
+  abline(va2, col = "red")
+```
+
