@@ -1,0 +1,77 @@
+---
+title: "텍스트마이닝 과제5"
+author: "데이터테크전공 20173204 곽명빈"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tm)
+library(qdapRegex)
+library(KoNLP)
+```
+
+```{r, echo = FALSE, out.width = "75%", fig.align = "left"}
+include_graphics("q1.png")
+```
+
+
+## 연설문데이터 정리
+```{r}
+a1 <- readLines("공군 창군70주년 축전.txt", encoding="UTF-8") 
+a2 <- readLines("제20회 사회복지의 날 축사.txt", encoding="UTF-8") 
+a3 <- readLines("한사우디 정상회담.txt", encoding="UTF-8") 
+a4 <- readLines("한미 정상회담.txt",encoding="UTF-8") 
+a5 <- readLines("제71주년 국군의 날 기념식.txt",encoding="UTF-8") 
+a6 <- readLines("제32주년 6.10민주항쟁 기념식 축사.txt",encoding="UTF-8") 
+a7 <- readLines("현충일 추념식.txt",encoding="UTF-8") 
+
+
+
+s1 <- paste(a1, collapse = "")
+s2 <- paste(a2, collapse = "")
+s3 <- paste(a3, collapse = "")
+s4 <- paste(a4, collapse = "")
+s5 <- paste(a5, collapse = "")
+s6 <- paste(a6, collapse = "")
+s7 <- paste(a7, collapse = "")
+
+
+
+```
+
+## 계층적군집화
+```{r}
+
+speech <- list(s1, s2, s3, s4, s5, s6, s7)  ## list로 변환
+
+speech1 <- Corpus(VectorSource(speech))
+
+myDtm <- TermDocumentMatrix(speech1, control = list(minWordLength = 1))
+
+findFreqTerms(myDtm, lowfreq = 3)
+
+findAssocs(myDtm,'한국', 0.6)
+
+#단어-문서 행렬을 행렬로 전환
+myDtmM <- as.matrix(myDtm)
+#단어목록
+rownames(myDtmM)
+# 단어가 나타난 빈도수에 따라 정렬
+wc <- rowSums(myDtmM)
+wo <- order(wc, decreasing = T)
+#빈도수 상위 20개만 뽑음
+fw <- myDtmM[wo[1:20], ] 
+# 동시 출현 단어를 알아내기 위한 행렬
+cm <- fw %*% t(fw)
+
+d <- dist(t(myDtm), method = "euclidian")
+fit <- hclust(d=d)
+plot(fit)
+```
+
+
+
+
