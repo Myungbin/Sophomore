@@ -1,5 +1,5 @@
 ---
-title: "데이터시각화 과제5"
+title: "폐암여부 시각화"
 author: "데이터테크전공 20173204 곽명빈"
 date: "`r Sys.Date()`"
 output: html_document
