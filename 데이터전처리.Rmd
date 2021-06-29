@@ -1,5 +1,5 @@
 ---
-title: "텍스트마이닝 과제4"
+title: "텍스트마이닝"
 author: "MYUNG BIN KWAK"
 date: "`r Sys.Date()`"
 output: html_document
