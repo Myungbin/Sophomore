@@ -1,5 +1,5 @@
 ---
-title: "텍스트마이닝 과제5"
+title: "계층적 군집화"
 author: "데이터테크전공 20173204 곽명빈"
 date: "`r Sys.Date()`"
 output: html_document
