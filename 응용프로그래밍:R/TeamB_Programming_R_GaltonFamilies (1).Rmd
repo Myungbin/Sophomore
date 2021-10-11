@@ -1,0 +1,402 @@
+---
+title: "응용R 팀프로젝트"
+author: "Team B"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+```
+##Francis Galton 은 인간 특성의 변이와 유전을 연구했습니다. 그중 Galton은 유전을 이해하기 위해 가족으로부터 키 데이터를 수집하고 이 과정에서 그는 상관관계와 회귀의 개념, 정규 분포를 따르는 데이터 쌍에 대한 관계를 연구했습니다. 물론, 이 데이터가 수집되었을 당시 우리의 유전학 지식은 오늘날 우리가 알고 있는 것에 비해 상당히 제한적이었지만 Galton은 이 데이터로부터 "부모와 자식 신장 사이에는 선형적인 관계가 있고 신장이 커지거나 작아지는 것보다는 전체 신장 평균으로 회귀하는 경향이 있다"라는 가설을 세웠습니다.또한 이러한 가설로써 대답하고자 했던 부분은 "부모의 키를 기준으로 아이의 키를 얼마나 잘 예측할 수 있습니까?" 입니다. 
+```
+
+```{r, fig.width = 8, fig.height = 5, warning = FALSE}
+
+library(HistData)
+library(knitr)
+#library(magrittr)
+library(ggplot2)
+library(gridExtra)
+library(carData)
+library(car)
+library(jpeg)
+library(png)
+library(plotrix)
+library(rasterImage)
+library(dplyr)
+library(tidyverse)
+
+data("GaltonFamilies")
+str(GaltonFamilies)
+
+#프란시스 골턴 사진
+francisgalton = "https://cdn.britannica.com/s:290x800/13/11613-004-33F53EAF/Francis-Galton-detail-oil-painting-G-Graef-1882.jpg"
+download.file(francisgalton, 'francisgalton.jpg', mode = 'wb')
+francisgalton <- readJPEG("francisgalton.jpg", native=TRUE)
+plot(0:1,0:1,type="n", ann=FALSE, axes=FALSE)
+rasterImage(francisgalton,0,0,1,1)
+
+#프란시스 골턴 연구(우리가 비슷하게 그려보고자 하는 그래프)
+galtonstudy = "https://curranbauer.org/wp-content/uploads/2017/05/reg-to-mean-from-galton2.png"
+download.file(galtonstudy,'galtonstudy.png', mode = 'wb')
+Galtonstudy <- readPNG("galtonstudy.png", native=TRUE)
+plot(0:1,0:1,type="n", ann=FALSE, axes=FALSE)
+rasterImage(Galtonstudy,0,0,1,1)
+
+#JPG파일 주소 : "https://www.researchgate.net/profile/Yeming_Ma2/publication/280970132/figure/fig1/AS:284517131669510@1444845578444/Rate-of-regression-in-hereditary-stature-Galton-1886-Plate-IX-fig-a-The-short_Q320.jpg"
+```
+
+
+#데이터 정리
+```{r}
+#의미있는 데이터만 뽑아내기
+fam <- select(GaltonFamilies, father, mother, midparentHeight, gender, childHeight)
+#fam <- GaltonFamilies[, c(2, 3, 4, 7, 8)]
+
+#inch 를 cm로 바꾸기
+f <- data.frame(round(fam[,-4]*2.54, 2), fam[, "gender"])                                 
+colnames(f) <- c("Father", "Mother", "MidParent", "Child", "Childtype")
+
+#MidParent = (Father + 1.08 * Mother) / 2
+
+#mean(fm$Child) / mean(fw$Child) # 아들 키의 평균 / 딸 키의 평균
+#1.080
+#mean(f$Father) / mean(f$Mother) # 아빠 키의 평균 / 엄마 키의 평균
+#1.079
+#mean(c(fm$Father, fm$Child)) / mean(c(fw$Mother, fw$Child)) # 아들과 아빠 키의 평균 / 딸과 엄마키의 평균
+#1.078
+
+#즉 갈톤 패밀리의 남자와 여자의 키차이는 1.08 배임을 알수있다.
+#그러므로 남자와 여자의 키차이를 보완하기위해 Midparent에 엄마키* 1.08인 데이터가 추가된것이다.
+
+#딸의 키에 1.08을 곱한 데이터를 추가
+f <- mutate(f, newChild = round(ifelse(f$Childtype == "female",1.08,1) * f$Child, 2))
+#f <- data.frame(f, "newChild" = round(ifelse(f$Childtype == "female",1.08,1) * f$Child, 2))
+
+f <- as_tibble(select(f, Father, Mother, MidParent, Child, newChild, Childtype))
+
+#전체 데이터를 아들과 딸의 데이터로 나누기(그래프 그릴때 변수 불러오기를 편하게 하기 위한 작업)
+fm <- subset(f, Childtype == "male")
+fw <- subset(f, Childtype == "female")
+
+f
+```
+
+#1.08을 곱한 이유 (시각적 분석) ( MidParent = (Father + 1.08 * Mather) / 2 ) ( plot )
+```{r, fig.width = 10, fig.height = 7}
+
+par(mfrow=c(2,2))
+
+plot(jitter(f$Child) ~ f$MidParent,
+     xlab = "Average Height of the Parents", 
+     ylab = "Height of the Child", 
+     main = "Galton Family(in cm)",
+     pch = 20,
+     col = ifelse(f$Childtype == "female", "#FA5882", "skyblue"))
+     legend(164, 197, pch = c(20,20), col=c("#FA5882","skyblue"), c("female", "male"), cex = 0.8)
+     lines(fm$MidParent, fitted(lm(Child ~ MidParent, data = fm)), col="skyblue",lwd=2.5)
+     lines(fw$MidParent, fitted(lm(Child ~ MidParent, data = fw)), col="#FA5882",lwd=2.5)
+
+plot(jitter(f$newChild) ~ f$MidParent,
+     xlab = "Average Height of the Parents", 
+     ylab = "Height of the Child", 
+     main = "Galton Family(in cm)",
+     pch = 20,
+     col = ifelse(f$Childtype == "female", "#FA5882", "skyblue"))
+     legend(164, 197.7, pch = c(20,20), col=c("#FA5882","skyblue"), c("female", "male"), cex = 0.8)
+     lines(f$MidParent, fitted(lm(newChild ~ MidParent, data = f)), col="violet",lwd=3)
+
+boxplot(f$Child ~ f$Childtype,
+        xlab = "", 
+        ylab = "")
+
+boxplot(f$newChild ~ f$Childtype,
+        xlab = "",
+        ylab = "")
+
+
+```
+
+#1.08을 곱한 이유 (시각적 분석) ( MidParent = (Father + 1.08 * Mather) / 2 ) ( ggplot ) 
+```{r, fig.width = 10, fig.height = 7}
+
+
+aa <- ggplot(data = f, aes(x = MidParent, y = Child, color = Childtype)) + 
+        geom_point() +
+        geom_smooth(method = "lm", se = FALSE , lwd = 2, show.legend = F) +
+        scale_colour_manual(values=c("#FA5882","skyblue")) + 
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + 
+        scale_x_continuous(name = "Average Height of the Parents") + 
+        scale_y_continuous(name = "Height of the Child") +
+        labs(title ="Galton Family(in cm)") +
+        theme(legend.position=c(0.11, 0.8), 
+              plot.title = element_text(hjust = 0.5, 
+                                        vjust = -0.5, 
+                                        size = 13))
+        
+bb <- ggplot(data = f, aes(x = MidParent, y = newChild, color = Childtype)) + 
+        geom_point() + 
+        geom_smooth(method = "lm", se = FALSE, col = "violet", lwd = 2 ) + 
+        scale_colour_manual(values=c("#FA5882","skyblue")) + 
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        scale_x_continuous(name = "Average Height of the Parents") + 
+        scale_y_continuous(name = "Height of the Child") +
+        labs(title ="Galton Family(in cm)") +
+        theme(legend.position=c(0.11, 0.8),
+              plot.title = element_text(hjust = 0.5, 
+                                        vjust = -0.5, 
+                                        size = 13))
+
+aaa <- ggplot(data = f, aes(x = MidParent, y = Child, group = Childtype)) + 
+        geom_boxplot(fill = "gray82", lwd = 0.7) +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        scale_x_continuous(name = "Female                                        male", breaks = F) + 
+        scale_y_continuous(name = "")
+
+bbb <- ggplot(data = f, aes(x = MidParent, y = newChild, group = Childtype)) + 
+        geom_boxplot(fill = "gray82", lwd = 0.7) +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        scale_x_continuous(name = "Female                                        male", breaks = F) + 
+        scale_y_continuous(name = "")
+
+grid.arrange(aa, bb, aaa, bbb, ncol = 2, nrow = 2)
+```
+
+
+
+#히스토그램 
+```{r, fig.width = 10, fig.height = 7}
+
+par(mfrow=c(2,2))
+
+hist(f$Father, main = "Father", breaks = 15, xlab = "", ylab = "")
+abline(v=mean(f$Father), col=2, lwd=3)
+
+hist(f$Mother, main = "Mother", breaks = 15, xlab = "", ylab = "")
+abline(v=mean(f$Mother), col=2, lwd=3)
+
+hist(fm$Child, main = "Son", breaks = 15, xlab = "", ylab = "")
+abline(v=mean(fm$Child), col=2, lwd=3)
+
+hist(fw$Child, main = "Daughter", breaks = 15, xlab = "", ylab = "")
+abline(v=mean(fw$Child), col=2, lwd=3)
+
+#중앙에 빨간선은 평균선을 의미하다.
+```
+
+#부모와 자식간의 산점도 1 (아빠, 아들), (엄마, 딸)
+```{r, fig.width = 12, fig.height = 5}
+
+grad <- "gradient = 1"
+
+cov_m <- cov(fm$Child, fm$Father)
+cov_w <- cov(fw$Child, fw$Mother)
+cor_m <- cor(fm$Child, fm$Father)
+cor_w <- cor(fw$Child, fw$Mother)
+
+par(mfrow=c(1,2))
+
+plot(fm$Child ~ fm$Father, pch = 19, col = "light blue", xlab = "Father", ylab = "Son")
+abline(lm(fm$Child ~ fm$Father, data = fm), col = "blue", lwd = 3)
+abline(a = 0, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(fm$Father), v = mean(fm$Child), lwd = 0.1, lty = 3)
+text(x = 164, y = 199, labels = paste("Cov =", round(cov_m, digits = 2)))
+text(x = 162.6, y = 196, labels = paste("r =", round(cor_m, digits = 2)))
+text(x = 195, y = 195, labels = grad)
+title(main = "Father & Son", cex.main = 1.5)
+### 축설정 못하겠음 axis(side = 1, at = c(160, 200))
+
+plot(fw$Child ~ fw$Mother, pch = 19, col = "pink", lwd = 3, xlab = "Mother", ylab = "Daughter")
+abline(lm(fw$Child ~ fw$Mother, data = fw), col = "#FA5882", lwd = 3)
+abline(a = 0, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(fw$Mother), v = mean(fw$Child), lwd = 0.1, lty = 3)
+text(x = 152.6, y = 178, labels = paste("Cov =", round(cov_w, digits = 2)))
+text(x = 151.65, y = 175.7, labels = paste("r =", round(cor_w, digits = 2)))
+text(x = 175, y = 175, labels = grad)
+title(main = "Mother & Daughter", cex.main = 1.5)
+
+#아빠와 아들, 엄마와 딸의 산점도를 비교해본 결과 두 그래프 모두 공분산이 양수가 나와 아빠와 엄마의 키가 증가할때 아들과 딸의 키가 증가함을 보인다. 또한 상관관계는 그리 높지않은걸로 보이지만 우리가 보여주고싶은것은 선형선의 기울기가 1보다 작아 평균으로 회귀함 이다. 두그래프의 선형선의 기울기는 1보다 작아 자식들의 키(신장)이 평균으로 회귀하는것이 시각적으로 확인된다.
+
+```
+#부모와 자식간의 산점도 2 (아빠,자식) (엄마,자식)
+```{r, fig.width = 12, fig.height = 5}
+
+cov_fc <- cov(f$Father, f$Child)
+cov_mc <- cov(f$Mother, f$Child)
+cor_fc <- cor(f$Father, f$Child)
+cor_mc <- cor(f$Mother, f$Child)
+
+par(mfrow=c(1,2))
+
+plot(f$Child ~ f$Father, pch = 19, col = "light blue", xlab = "Father", ylab = "Child")
+abline(lm(f$Child ~ f$Father, data = f), col = "blue", lwd = 3)
+abline(a = -7, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(f$Child), v = mean(f$Father), lwd = 0.1, lty = 3)
+text(x = 164.5, y = 199, labels = paste("Cov =", round(cov_fc, digits = 2)))
+text(x = 163.0, y = 195.7, labels = paste("r =", round(cor_fc, digits = 2)))
+text(x = 195, y = 187, labels = grad)
+title(main = "Father $ Child ", cex.main = 1.5)
+
+plot(f$Child ~ f$Mother, pch = 19, col = "pink", lwd = 3, xlab = "Mother", ylab = "Child")
+abline(lm(f$Child ~ f$Mother, data = f), col = "#FA5882", lwd = 3)
+abline(a = 7, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(f$Child), v = mean(f$Mother), lwd = 0.1, lty = 3)
+text(x = 152.6, y = 199, labels = paste("Cov =", round(cov_mc, digits = 2)))
+text(x = 151.1, y = 196, labels = paste("r =", round(cor_mc, digits = 2)))
+text(x = 175, y = 181, labels = grad)
+title(main = "Mother & Child", cex.main = 1.5)
+
+#아빠와 자식, 엄마와 자식의 산점도를 비교해본 결과 두 그래프 모두 공분산이 양수가 나와 아빠와 엄마의 키가 증가할때 자식 키가 증가함을 보인다. 또한 상관관계는 낮은걸로 보이지만 선형선의 기울기가 1보다 작아 자식들의 키가 평균으로 회귀함을 보인다.
+```
+
+#부모와 자식간의 산점도 3 (부모, 아들), (부모, 딸)
+```{r, fig.width = 12, fig.height = 5}
+
+cov_pm <- cov(fm$MidParent, fm$Child)
+cov_pw <- cov(fw$MidParent, fw$Child)
+cor_pm <- cor(fm$MidParent, fm$Child)
+cor_pw <- cor(fw$MidParent, fw$Child)
+
+par(mfrow=c(1,2))
+
+plot(fm$Child ~ fm$MidParent, pch = 19, col = "light blue", xlab = "Parents", ylab = "Son")
+abline(lm(fm$Child ~ fm$MidParent, data = fm), col = "blue", lwd = 3)
+abline(a = 0, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(fm$Child), v = mean(fm$MidParent), lwd = 0.1, lty = 3)
+text(x = 167.5, y = 199, labels = paste("Cov =", round(cov_pm, digits = 2)))
+text(x = 166.6, y = 196, labels = paste("r =", round(cor_pm, digits = 2)))
+text(x = 190, y = 190, labels = grad)
+title(main = "Parents & Son", cex.main = 1.5)
+
+plot(fw$Child ~ fw$MidParent, pch = 19, col = "pink", lwd = 3, xlab = "Parents", ylab = "Daughter")
+abline(lm(fw$Child ~ fw$MidParent, data = fw), col = "#FA5882", lwd = 3)
+abline(a = -13.5, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(fw$Child), v = mean(fw$MidParent), lwd = 0.1, lty = 3)
+text(x = 167.5, y = 178, labels = paste("Cov =", round(cov_pw, digits = 2)))
+text(x = 166.6, y = 175.7, labels = paste("r =", round(cor_pw, digits = 2)))
+text(x = 189, y = 176, labels = grad)
+title(main = "Parents & Daughter", cex.main = 1.5)
+
+#부모와 아들, 부모와 딸의 산점도를 비교해본 결과 두 그래프 모두 공분산이 양수가 나와 부모의 키가 증가할때 아들과 딸의 키가 증가함을 보인다. 또한 상관관계 또한 조금있는걸로 보이고 선형선의 기울기가 1보다 작아 아들과 딸의 키가 평균으로 회귀함을 보인다.
+```
+
+#부모와 자식간의 산점도 4 (부모, 자식), (부모, 자식 (딸의 키 * 1.08))
+```{r, fig.width = 12, fig.height = 5}
+
+cov_pc <- cov(f$MidParent, f$Child)
+cor_pc <- cor(f$MidParent, f$Child)
+cov_pnc <- cov(f$MidParent, f$newChild)
+cor_pnc <- cor(f$MidParent, f$newChild)
+
+par(mfrow=c(1,2))
+
+plot(f$Child ~ f$MidParent, pch = 19, col = "gray88", xlab = "Parents", ylab = "Child")
+abline(lm(f$Child ~ f$MidParent, data = f), col = "gray55 ", lwd = 3)
+abline(a = -6.5, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(f$Child), v = mean(f$MidParent), lwd = 0.1, lty = 3)
+text(x = 167.5, y = 199, labels = paste("Cov =", round(cov_pc, digits = 2)), col = "black")
+text(x = 166.5, y = 195.7, labels = paste("r =", round(cor_pc, digits = 2)), col = "black")
+text(x = 189, y = 182, labels = grad, col = "black")
+title(main = " Parents & Child ", cex.main = 1.5)
+
+plot(f$newChild ~ f$MidParent, pch = 19, col = "gray88", xlab = "Parents", ylab = "newChild")
+abline(lm(f$newChild ~ f$MidParent, data = f), col = "gray55 ", lwd = 3)
+abline(a = 0, b = 1, col="black", lty = 2, lwd =2)
+abline(h = mean(f$newChild), v = mean(f$MidParent), lwd = 0.1, lty = 3)
+text(x = 167.5, y = 199, labels = paste("Cov =", round(cov_pnc, digits = 2)), col = "black")
+text(x = 166.2, y = 196.3, labels = paste("r =", round(cor_pnc, digits = 2)), col = "black")
+text(x = 189, y = 189, labels = grad, col = "black")
+title(main = " Parents & newChild ", cex.main = 1.5)
+
+
+#마지막으로 부모와 자식간의 산점도를 비교해본결과 양의 선형관계를 가지고있고 선형선의 기울기가 1보다 작아 자식의 키가 평균으로 회귀함을 볼수있다. 수정된 자식 데이터로 비교한 결과도 같은 해석이 가능하고 다른점은 상관관계가 수정하지않은 자식 데이터보다 높게 나왔다는 점이다.(당연한 결과)
+```
+
+#검정
+```{r}
+
+summary(f)
+
+var.test(f$Child ~ f$Childtype)
+
+t.test(f$Child ~ f$Childtype, var.equal = FALSE)
+
+#등분산검정과 t검정 결과로 추측했을때 성별의 따른 키차이가 있음이 보인다.
+```
+
+#키 예측 (아빠의 키로부터 아들의 키)
+```{R}
+
+model1 <- lm(fm$Child ~ fm$Father, data = fm)
+
+#정규성 검정(직관적(시각적)해석을 위한 qqPlot, shapiro-wilk nomality test 의 p-value > 0.05 이상이면 정규분포)
+qqPlot(model1) 
+shapiro.test(resid(model1))
+
+# 이상치를 처리하기위해 car패키지 이용
+outlierTest(model1)
+fm2 <- subset(fm, rownames(fm) != "293" & rownames(fm) != "487")
+
+model1 <- lm(fm2$Child ~ fm2$Father, data = fm2)
+
+summary(model1)
+
+
+#회귀분석 결과 P-value(유의확률) < 0.05 이므로 회귀식은 통계적으로 유의하다.
+#분석결과 : 회귀식 (아들의 키 = 0.446 * 아빠의 키 + 97.453) 이므로 아빠의 키로써 아들의 키를 예측할수있다.
+
+
+```
+
+#키 예측 (엄마의 키로 부터 딸의 키)
+```{r}
+
+model2 <- lm(fw$Child ~ fw$Mother, data = fw)
+
+#정규성 검정
+qqPlot(model2)
+shapiro.test(resid(model2))
+
+#이상치 처리
+outlierTest(model2)
+fw2 <- subset(fw, rownames(fw) != "392")
+
+model2 <- lm(fw2$Child ~ fw2$Mother, data = fw2)
+
+summary(model2)
+
+
+#회귀분석 결과 P-value(유의확률) < 0.05 이므로 회귀식은 통계적으로 유의하다.
+#분석결과 : 회귀식 (딸의 키 = 0.321 * 엄마의 키 + 110.594) 이므로 엄마의 키로써 딸의 키를 예측할수있다. 
+
+
+```
+
+#키 예측 (부모님의 키로 부터 자식의 키)
+```{r}
+
+#딸의키는 기존의 데이터에 1.08을 곱한 newChild의 데이터를 사용하기로한다.
+
+model3 <- lm(f$newChild ~ f$MidParent, data =f)
+
+#정규성 검정
+qqPlot(model3)
+shapiro.test(resid(model3))
+
+#이상치 처리
+outlierTest(model3)
+f2 <- subset(f, rownames(f) != "293" & rownames(f) != "487")
+
+
+model3 <- lm(f2$newChild ~ f2$MidParent, data =f2)
+
+summary(model3)
+
+#회귀분석 결과 P-value(유의확률) < 0.05 이므로 회귀식은 통계적으로 유의하다.
+#분석결과 : 회귀식 ( 자식의 키 = 0.711 * 부모의 키 + 50.873 ) 이므로 부모의 키로써 자식의 키를 예측할수있다.
+#만약 딸의 키를 예측하고 싶으면 예측된 자식의 키 나누기 1.08을 해주면 된다.
+
+```
