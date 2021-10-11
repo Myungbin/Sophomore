@@ -1,0 +1,47 @@
+---
+title: "데이터시각화 과제5"
+author: "데이터테크전공 20173204 곽명빈"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(ggplot2)
+```
+
+```{r, echo = FALSE, out.width = "75%", fig.align = "left"}
+include_graphics("q1.png")
+```
+
+```{r}
+lc <- read.csv("cancer.csv")
+
+yes <- subset(lc, LC == "LungCancer")  ##  폐암 O
+no <- subset(lc, LC == "NoCancer")     ##  폐암 X
+
+```
+
+
+## 폐암여부를 시각화
+```{r}
+ggplot(data = lc)+
+  geom_bar(aes(x=LC))+
+  ggtitle("폐암인사람과 아닌사람")+
+    theme(plot.title = element_text(family = "serif", face = "bold", hjust = 0.5, size = 15, color = "darkblue"))
+
+```
+
+## 흡연기간과 폐암여부
+```{r}
+ggplot(data = yes,
+       aes(x=Smoking)) + 
+  geom_histogram() 
+
+ggplot(data = no,
+       aes(x=Smoking)) + 
+  geom_histogram() 
+
+
+```

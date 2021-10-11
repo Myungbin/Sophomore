@@ -1,0 +1,162 @@
+---
+title: "데이터시각화 과제4"
+author: "데이터테크전공 20173204 곽명빈"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(ggplot2)
+library(lattice)
+library(dplyr)
+```
+
+```{r, echo = FALSE, out.width = "75%", fig.align = "left"}
+include_graphics("q1.png")
+```
+
+
+## 자료 제시
+```{r}
+dia <- read.csv("diamonds.csv")
+str(dia)
+head(dia, 10)
+```
+
+# 다이아몬드의 가격과 무게의 관계 시각화
+
+```{r}
+ggplot(data = dia,
+       aes(x=carat, y=price)) + 
+  geom_point(size = 2, color = "skyblue") + 
+  stat_smooth(method = 'lm') +
+  ggtitle("Scatter plot :price & carat") +
+  theme(plot.title = element_text(size = 15))
+summary(lm(price ~ carat, dia))
+cor(dia$carat, dia$price)
+```
+
+#  컷팅품질
+```{r}
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = cut)) +
+  geom_smooth(method = 'lm') +
+  ggtitle("Scatter plot :price & carat cut")+
+  facet_wrap(~cut, ncol = 3)
+
+a1 <- ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = cut)) +
+  geom_smooth(method = 'lm') +
+  ggtitle("Scatter plot :price & carat cut")
+  
+a1
+
+```
+
+
+## 색상품질
+```{r}
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = color)) +
+  geom_smooth(method = 'lm') + 
+  ggtitle("Scatter plot :price & carat color")+
+  facet_wrap(~color, ncol = 3)
+
+a2 <- ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = color)) +
+  geom_smooth(method = 'lm') + 
+  ggtitle("Scatter plot :price & carat color")
+  
+a2  
+```
+
+## 순수함
+```{r}
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = clarity)) +
+  geom_smooth(method = 'lm') +  
+  ggtitle("Scatter plot :price & carat clarity")+
+  facet_wrap(~clarity, ncol = 3)
+
+a3 <- ggplot(dia, aes(x=carat, y=price)) +
+  geom_point(aes(color = clarity)) +
+  geom_smooth(method = 'lm') +  
+  ggtitle("Scatter plot :price & carat clarity")
+
+a3
+
+``` 
+
+
+## 다이아몬드가격에 큰영향을 주는 요소
+
+
+각요소별 산점도를 확인해보았을때 양의 선형관계를 나타내고 있다. 다이아몬드의 무게와 가격의 상관계수를 cor()를 이용하여 구해보니 0.93으로 두 변수가 큰 상관관계가 있다고 보여진다. price(가격)은 carat(무게)가 높을 수록 높게 나타난다. 이를 각 요소별 price(가격)과 carat(무게)의 평균을 구해보았을때 좋지 못한 등급의 컷팅품질, 색상품질, 순수함의 가격평균이 높게 나타남을 아래의 막대그래프로 확인 할 수있다. 예를 들어 cut의 price(가격)는 Fair 등급이 가장 높은것으로 나오는데 Fair 등급은 cut등급중 가장 낮은것이다. 하지만 carat(무게)의 평균을 보았을때 Fair 등급이 가장 높게 설정되어 있다.
+색상의 경우 D가 제일 높은 등급이다. 가장 높은 D등급이지만 무게가 낮기때문에 가격또한 낮게 나타난다. 무게와 비례하여 가격이 형성되어 있음을 확인할수있다.  
+순수함은 IF - VVS - VS - SI - I로 등급이 높다.  앞의 컷팅품질과 색상은 등급에 상관없이 비례하지만 순수함의 경우는 비례하지 않는다. 무게 에게 I1이 가장 높지만 가격면에서는 SI2가 가장 높게 나타난다. 어느정도 무게에는 비례하지만 위의 두 결과와 달리 모든 데이터가 비례하지는 않는다고 볼 수 있다. 이을통해 다이아몬드가격에 큰 영향을 주는 요소는 무게를 제외하고는 순수함이라고 볼 수 있다. 
+```{r} 
+#다이아몬드 가격에 큰영향을 주는 요소 알아보기 
+
+dia %>%
+  ggplot(aes(x = cut, y = carat)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("무게와 컷팅품질")
+
+
+dia %>%
+  ggplot(aes(x = cut, y = price)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("가격과 컷팅품질") 
+
+dia %>%
+  ggplot(aes(x = color, y = carat)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("무게와 색상") 
+
+dia %>%
+  ggplot(aes(x = color, y = price)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("가격과 색상")  
+
+dia %>%
+  ggplot(aes(x = clarity, y = carat)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("무게와 순수함")   
+
+dia %>%
+  ggplot(aes(x = clarity, y = price)) +
+  stat_summary_bin(fun.y = 'mean', geom = 'bar')+
+  ggtitle("가격과 순수함")  
+
+
+```
+
+## 데이터를 이해하기 위한 시각화 (Box plot)
+
+```{r}
+## 박스플랏
+
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_boxplot(aes(color = clarity)) +
+  ggtitle("Box Plot :price & carat clarity")
+
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_boxplot(aes(color = cut)) +
+  ggtitle("Box Plot :price & carat cut")
+
+
+ggplot(dia, aes(x=carat, y=price)) +
+  geom_boxplot(aes(color = color)) +
+  ggtitle("Box Plot :price & carat color")
+
+
+## 박스플랏을 선택한 이유 
+## 박스플랏을 통해 4분위수 와 최소 최대값을 알수 있어서 대략적인 정보를 알수있게되기 떄문
+
+```
+
+
+
+
