@@ -1,0 +1,117 @@
+---
+title: "텍스트마이닝 과제3"
+author: "데이터테크전공 20173204 곽명빈"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+```{r, echo = FALSE, out.width = "75%", fig.align = "left"}
+include_graphics("q1.png")
+```
+
+```{r}
+library(KoNLP)
+library(dplyr)
+library(wordcloud)
+
+library(stringr)
+library(wordcloud2)
+```
+## 데이터(영화: 나는 내일, 어제의 너와 만난다)
+```{r}
+txt <- readLines("movie1.txt") 
+head(txt,20)  ## 데이터 20개만 보이기 
+```
+
+
+
+```{r}
+nouns <- sapply(txt, extractNoun, USE.NAMES = F)
+
+nouns_unlist <- unlist(nouns)
+
+##데이터 전처리 
+nouns_unlist <- Filter(function(x){nchar(x)>=2}, nouns_unlist)
+nouns_unlist<- gsub('[~!@#$%&*()_+=?<>]','',nouns_unlist)
+nouns_unlist <- gsub("\\[","",nouns_unlist)
+nouns_unlist <- gsub('[ㄱ-ㅎ]','',nouns_unlist)
+nouns_unlist<- gsub('(ㅜ|ㅠ)','',nouns_unlist)
+nouns_unlist <- gsub("\\d+","",nouns_unlist)
+
+head(nouns_unlist, 30) ##30개 추출
+
+extractNoun(nouns_unlist)
+
+wordcount <- table(nouns_unlist)
+
+wordcount_top <-head(sort(wordcount, decreasing = T),100)
+
+wordcount_top      # 많이나온 단어
+
+wordcloud(names(wordcount_top), wordcount_top)
+
+```
+
+
+## 워드클라우드
+```{r}
+pal <- brewer.pal(8, "Dark2") ##단어의 색
+
+wordcloud(names(wordcount_top),     
+          wordcount_top,
+          scale=c(5,0.5),
+          random.order = FALSE,
+          random.color = TRUE,
+          colors = pal,
+          family = "")
+
+```
+```{r, echo = FALSE, out.width = "75%", fig.align = "left"}
+include_graphics("q2.png")
+```
+
+
+```{r}
+library(readxl)
+library(ggplot2)
+seoul <- read_excel("seoul.xlsx")
+```
+#분식이 들어간 업소
+```{r}
+##2-1번
+address <- seoul$'업소명'
+head(address, 50)
+grep('분식', address, value = T)
+```
+
+#숫자가 들어간 업소
+```{r}
+##2-2번
+grep('\\d', address, value = T)
+```
+
+#헤어가 들어간 업소와 미용실이 들어간 업소 비교
+```{r}
+##2-3번
+hair <- grep('헤어', address)  #'헤어'가 들어간 업소
+hairshop <- grep('미용실', address) #'미용실'이 들어간 업소
+length(hair)    #헤어가 들어간 업소의 갯수
+length(hairshop)# 미용실이 들어간 업소의 갯수
+
+# barplot
+a <- length(hair)  
+b <- length(hairshop)
+al=c(a, b)
+barplot(al,
+        main = "두 변수 비교",
+        ylim = c(0,80),
+        col =c("#2EFEF7", "#81F7BE"),
+        names.arg = c("hair", "hairshop"),
+        width = 0.00001)
+```
+
